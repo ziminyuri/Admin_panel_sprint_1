@@ -62,19 +62,19 @@ class Genre:
 
 @dataclass(frozen=True)
 class GenreFilmWork:
-    __slots__ = ['id', 'film_work', 'genre', 'created_at']
+    __slots__ = ['id', 'filmwork_id', 'genre_id', 'created_at']
 
     id: uuid
-    film_work: FilmWork
-    genre: Genre
+    filmwork_id: FilmWork
+    genre_id: Genre
     created_at: datetime
 
     def get_values(self) -> tuple:
-        return (self.id, self.film_work, self.genre, self.created_at)
+        return (self.id, self.filmwork_id, self.genre_id, self.created_at)
 
     @staticmethod
     def get_fields_name() -> str:
-        return "id, film_work, genre, created_at"
+        return "id, filmwork_id, genre_id, created_at"
 
     @staticmethod
     def get_args() -> str:
@@ -105,20 +105,20 @@ class Person:
 
 @dataclass(frozen=True)
 class PersonFilmWork:
-    __slots__ = ['id', 'film_work', 'person', 'role', 'created_at']
+    __slots__ = ['id', 'filmwork_id', 'person_id', 'role', 'created_at']
 
     id: uuid
-    film_work: FilmWork
-    person: Person
+    filmwork_id: FilmWork
+    person_id: Person
     role: str
     created_at: datetime
 
     def get_values(self) -> tuple:
-        return (self.id, self.film_work, self.person, self.role, self.created_at)
+        return (self.id, self.filmwork_id, self.person_id, self.role, self.created_at)
 
     @staticmethod
     def get_fields_name() -> str:
-        return "id, film_work, person, role, created_at"
+        return "id, filmwork_id, person_id, role, created_at"
 
     @staticmethod
     def get_args() -> str:
