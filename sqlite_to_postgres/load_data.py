@@ -137,7 +137,7 @@ class PostgresSaver:
             values = []
             i = 1
 
-            inserted= 0
+            inserted = 0
             n = len(data[table_name])
 
             for entry in data[table_name]:
