@@ -23,12 +23,12 @@ class FilmWork:
         return (self.id, self.title, self.description, self.creation_date, self.certificate, self.file_path,
                 self.rating, self.type, self.creation_date, self.updated_at)
 
-    @staticmethod
-    def get_fields_name() -> str:
+    @classmethod
+    def get_fields_name(cls) -> str:
         return "id, title, description, creation_date, certificate, file_path, rating, type, created_at, updated_at"
 
-    @staticmethod
-    def get_args() -> str:
+    @classmethod
+    def get_args(cls) -> str:
         return "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s"
 
 
@@ -45,12 +45,12 @@ class Genre:
     def get_values(self) -> tuple:
         return (self.id, self.name, self.description, self.created_at, self.updated_at)
 
-    @staticmethod
-    def get_fields_name() -> str:
+    @classmethod
+    def get_fields_name(cls) -> str:
         return "id, name, description, created_at, updated_at"
 
-    @staticmethod
-    def get_args() -> str:
+    @classmethod
+    def get_args(cls) -> str:
         return "%s, %s, %s, %s, %s"
 
 
@@ -66,12 +66,12 @@ class GenreFilmWork:
     def get_values(self) -> tuple:
         return (self.id, self.filmwork_id, self.genre_id, self.created_at)
 
-    @staticmethod
-    def get_fields_name() -> str:
+    @classmethod
+    def get_fields_name(cls) -> str:
         return "id, filmwork_id, genre_id, created_at"
 
-    @staticmethod
-    def get_args() -> str:
+    @classmethod
+    def get_args(cls) -> str:
         return "%s, %s, %s, %s"
 
 
@@ -88,12 +88,12 @@ class Person:
     def get_values(self) -> tuple:
         return (self.id, self.full_name, self.birth_date, self.created_at, self.updated_at)
 
-    @staticmethod
-    def get_fields_name() -> str:
+    @classmethod
+    def get_fields_name(cls) -> str:
         return "id, full_name, birth_date, created_at, updated_at"
 
-    @staticmethod
-    def get_args() -> str:
+    @classmethod
+    def get_args(cls) -> str:
         return "%s, %s, %s, %s, %s"
 
 
@@ -110,10 +110,10 @@ class PersonFilmWork:
     def get_values(self) -> tuple:
         return (self.id, self.filmwork_id, self.person_id, self.role, self.created_at)
 
-    @staticmethod
-    def get_fields_name() -> str:
+    @classmethod
+    def get_fields_name(cls) -> str:
         return "id, filmwork_id, person_id, role, created_at"
 
-    @staticmethod
-    def get_args() -> str:
+    @classmethod
+    def get_args(cls) -> str:
         return "%s, %s, %s, %s, %s"

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import psycopg2
 from psycopg2.extensions import connection as _connection
-from psycopg2.extras import DictCursor
+from psycopg2.extras import DictCursor, execute_batch
 
 from models import FilmWork, Genre, GenreFilmWork, Person, PersonFilmWork
 from config import logging, env
@@ -14,34 +14,19 @@ class PostgresSaver:
     def __init__(self, connection: _connection):
         self.__connection = connection
 
-    def save_all_data(self, data: dict):
-        batch: int = 100
+    def save_all_data(self, table, model, data: list):
         cursor: DictCursor = self.__connection.cursor()
 
-        for table_name in data:
-            values = []
-            i = 1
+        values = []
+        for entry in data:
+            values.append(entry.get_values())
 
-            inserted = 0
-            n = len(data[table_name])
+        fields: str = model.get_fields_name()
+        args: str = model.get_args()
 
-            for entry in data[table_name]:
-                values.append(entry.get_values())
-                inserted += 1
-                if i is batch or inserted == n:
-                    fields: str = entry.get_fields_name()
-                    args: str = entry.get_args()
-                    self.__multi_inserting(cursor, table_name, fields, values, args)
-                    i = 0
-                    values = []
-                i += 1
-
-    def __multi_inserting(self, cursor: DictCursor, table_name: str, fields_name: str, data: list, args: str):
-        values = ','.join(cursor.mogrify(f"({args})", item).decode() for item in data)
-        query = f"""INSERT INTO content.{table_name} ({fields_name}) VALUES {values} ON CONFLICT (id) DO NOTHING;"""
-
+        command = f"""INSERT INTO content.{table} ({fields}) VALUES ({args}) ON CONFLICT (id) DO NOTHING;"""
         try:
-            cursor.execute(query)
+            execute_batch(cursor, command, values)
             self.__connection.commit()
         except Exception as e:
             logging.exception(f"Ошибка записи в PostgreSQL: {e}")
@@ -50,31 +35,33 @@ class PostgresSaver:
 class SQLiteLoader:
     def __init__(self, connection: sqlite3.Connection):
         self.__connection = connection
+        self.__cursor = self.__connection.cursor()
 
-    def load_movies(self) -> dict:
-        executor = self.__connection.cursor()
+    def getCursor(self):
+        return self.__cursor
+
+    def setCursor(self, value):
+        self.__cursor = value
+
+    def get_count(self, table) -> int:
+        cursor = self.getCursor()
+        return cursor.execute(f"SELECT Count() FROM {table}").fetchone()[0]
+
+    def load_data(self, table, model, batch) -> list:
+        executor = self.getCursor()
 
         try:
-            data = {
-                'film_work': self.__get_data_from_table(executor, 'film_work', FilmWork),
-                'genre': self.__get_data_from_table(executor, 'genre', Genre),
-                'genre_film_work': self.__get_data_from_table(executor, 'genre_film_work', GenreFilmWork),
-                'person': self.__get_data_from_table(executor, 'person', Person),
-                'person_film_work': self.__get_data_from_table(executor, 'person_film_work', PersonFilmWork)
-            }
+            data = []
+            for row in executor.execute(f"SELECT * FROM {table}").fetchmany(batch):
+                data.append(model(*row))
 
+            self.setCursor(executor)
             return data
+
         except Exception as e:
             logging.exception(f"Ошибка чтения из БД Sqlite3:: {e}")
+            self.__connection.close()
             sys.exit()
-
-    @staticmethod
-    def __get_data_from_table(executor: sqlite3.Cursor, table_name: str, data_class: dataclass) -> list:
-        data = []
-        for row in executor.execute(f"SELECT * FROM {table_name}"):
-            data.append(data_class(*row))
-
-        return data
 
 
 def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
@@ -82,8 +69,25 @@ def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
     postgres_saver = PostgresSaver(pg_conn)
     sqlite_loader = SQLiteLoader(connection)
 
-    data: dict = sqlite_loader.load_movies()
-    postgres_saver.save_all_data(data)
+    batch = 100
+    tables_models = [
+        ['film_work', FilmWork],
+        ['genre', Genre],
+        ['genre_film_work', GenreFilmWork],
+        ['person', Person],
+        ['person_film_work', PersonFilmWork]
+    ]
+
+    for table in tables_models:
+        count = sqlite_loader.get_count(table[0])
+        i = 0
+        while i < count:
+            data = sqlite_loader.load_data(table[0], table[1], batch)
+            postgres_saver.save_all_data(table[0], table[1], data)
+            i += batch
+
+    # data: dict = sqlite_loader.load_movies()
+    # postgres_saver.save_all_data(data)
 
 
 if __name__ == '__main__':
@@ -97,3 +101,5 @@ if __name__ == '__main__':
 
     with sqlite3.connect('db.sqlite') as sqlite_conn, psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
         load_from_sqlite(sqlite_conn, pg_conn)
+
+    sqlite_conn.close()
