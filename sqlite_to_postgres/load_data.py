@@ -6,15 +6,15 @@ import psycopg2
 from psycopg2.extensions import connection as _connection
 from psycopg2.extras import DictCursor, execute_batch
 
+from config import env, logging
 from models import FilmWork, Genre, GenreFilmWork, Person, PersonFilmWork
-from config import logging, env
 
 
 class PostgresSaver:
     def __init__(self, connection: _connection):
         self.__connection = connection
 
-    def save_all_data(self, table, model, data: list):
+    def save_all_data(self, table: str, model: dataclass, data: list):
         cursor: DictCursor = self.__connection.cursor()
 
         values = []
@@ -35,31 +35,29 @@ class PostgresSaver:
 class SQLiteLoader:
     def __init__(self, connection: sqlite3.Connection):
         self.__connection = connection
-        self.__cursor = self.__connection.cursor()
-
-    def getCursor(self):
-        return self.__cursor
-
-    def setCursor(self, value):
-        self.__cursor = value
 
     def get_count(self, table) -> int:
-        cursor = self.getCursor()
+        cursor = self.__connection.cursor()
         return cursor.execute(f"SELECT Count() FROM {table}").fetchone()[0]
 
-    def load_data(self, table, model, batch) -> list:
-        executor = self.getCursor()
+    def to_postgres(self, pg, table, model, batch) -> list:
+        cursor = self.__connection.cursor()
 
         try:
-            data = []
-            for row in executor.execute(f"SELECT * FROM {table}").fetchmany(batch):
-                data.append(model(*row))
+            count: int = self.get_count(table)
+            i = 0
+            command = cursor.execute(f"SELECT * FROM {table}")
+            while i < count:
+                data = []
+                for row in command.fetchmany(batch):
+                    data.append(model(*row))
 
-            self.setCursor(executor)
-            return data
+                pg.save_all_data(table, model, data)
+                i += batch
 
         except Exception as e:
             logging.exception(f"Ошибка чтения из БД Sqlite3:: {e}")
+
             self.__connection.close()
             sys.exit()
 
@@ -69,7 +67,7 @@ def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
     postgres_saver = PostgresSaver(pg_conn)
     sqlite_loader = SQLiteLoader(connection)
 
-    batch = 100
+    batch = 200
     tables_models = [
         ['film_work', FilmWork],
         ['genre', Genre],
@@ -79,15 +77,7 @@ def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
     ]
 
     for table in tables_models:
-        count = sqlite_loader.get_count(table[0])
-        i = 0
-        while i < count:
-            data = sqlite_loader.load_data(table[0], table[1], batch)
-            postgres_saver.save_all_data(table[0], table[1], data)
-            i += batch
-
-    # data: dict = sqlite_loader.load_movies()
-    # postgres_saver.save_all_data(data)
+        sqlite_loader.to_postgres(postgres_saver, table[0], table[1], batch)
 
 
 if __name__ == '__main__':
