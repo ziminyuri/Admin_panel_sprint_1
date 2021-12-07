@@ -2,7 +2,9 @@ from pathlib import Path
 
 import environ
 
-env = environ.Env()
+env = environ.Env(
+    DEBUG=(bool, False)
+)
 environ.Env.read_env('.env')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
